@@ -39,10 +39,23 @@ export class AuthService {
     const token = await this.jwtService.signAsync(payload);
     return {
       access_token: token,
+      user: {
+        id: userId,
+        email: email,
+      }
     };
   }
 
-  login(dto: LoginDto) {
+  async login(dto: LoginDto) {
+    const existingUser = await this.prisma.user.findUnique({
+      where: {email: dto.email},
+    });
 
+    if (!existingUser) throw new BadRequestException("Invalid Credentials");
+
+    const passMatch = await bcrypt.compare(dto.password, existingUser.password);
+    if (!passMatch) throw new BadRequestException("Invalid Credentials");
+
+    return this.signToken(existingUser.id, existingUser.email);
   }
 }
